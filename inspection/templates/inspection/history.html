@@ -1,0 +1,192 @@
+{% extends 'inspection/base.html' %}
+{% load static %}
+
+{% block title %}Inspection History – VisionInspect AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">PatchCore Inspection Audit History</h2>
+            <p class="text-muted mb-0">Searchable and filterable archive of all component quality evaluations and anomaly maps.</p>
+        </div>
+        <div>
+            <a href="{% url 'inspect_upload' %}" class="btn btn-primary fw-semibold shadow-sm">
+                <i class="bi bi-camera-fill me-1"></i> New Inspection
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters & Search Toolbar -->
+    <div class="card card-industrial p-3 mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-7">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Search by Inspection ID or filename...">
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-md-3">
+                <select name="status" class="form-select">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                    <option value="anomalous" {% if status_filter == 'anomalous' %}selected{% endif %}>Potential Anomalies</option>
+                    <option value="normal" {% if status_filter == 'normal' %}selected{% endif %}>Normal Components</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected Images</option>
+                    <option value="uncertain" {% if status_filter == 'uncertain' %}selected{% endif %}>Uncertain Quality</option>
+                </select>
+            </div>
+
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-secondary fw-semibold">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Inspections Table -->
+    <div class="card card-industrial">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark">
+                <i class="bi bi-list-check text-primary me-2"></i>Total Records: <span class="badge bg-primary-subtle text-primary">{{ total_count }}</span>
+            </span>
+            {% if query or status_filter != 'all' %}
+            <a href="{% url 'inspection_history' %}" class="small text-danger text-decoration-none">
+                <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small text-uppercase">
+                    <tr>
+                        <th class="ps-3">Component</th>
+                        <th>Heatmap</th>
+                        <th>Inspection ID</th>
+                        <th>Validation</th>
+                        <th>Status</th>
+                        <th>Anomaly Score</th>
+                        <th>Date & Time</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inspections %}
+                    <tr>
+                        <td class="ps-3">
+                            {% if item.uploaded_image %}
+                            <a href="{% url 'inspection_result' item.inspection_id %}">
+                                <img src="{{ item.uploaded_image.url }}" alt="Component" class="table-thumbnail">
+                            </a>
+                            {% else %}
+                            <div class="table-thumbnail bg-light d-flex align-items-center justify-content-center text-muted">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.anomaly_heatmap %}
+                            <a href="{% url 'inspection_result' item.inspection_id %}">
+                                <img src="{{ item.anomaly_heatmap.url }}" alt="Heatmap" class="table-thumbnail border-danger">
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'inspection_result' item.inspection_id %}" class="fw-bold text-decoration-none text-primary font-monospace">
+                                {{ item.inspection_id }}
+                            </a>
+                            <div class="small text-muted">{{ item.original_filename|default:"component.png"|truncatechars:24 }}</div>
+                        </td>
+                        <td>
+                            {% if item.validation_status == 'VALID' %}
+                                <span class="badge bg-success-subtle text-success border border-success">
+                                    <i class="bi bi-check-circle me-1"></i>Valid ({{ item.validation_confidence|floatformat:0 }}%)
+                                </span>
+                            {% elif item.validation_status == 'UNCERTAIN' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning">
+                                    <i class="bi bi-question-circle me-1"></i>Uncertain
+                                </span>
+                            {% else %}
+                                <span class="badge badge-rejected">
+                                    <i class="bi bi-x-circle me-1"></i>Rejected
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.inspection_status == 'NORMAL' %}
+                                <span class="badge badge-normal px-2 py-1">
+                                    <i class="bi bi-check-circle me-1"></i>Normal
+                                </span>
+                            {% elif item.inspection_status == 'ANOMALOUS' %}
+                                <span class="badge badge-defect px-2 py-1">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Anomaly
+                                </span>
+                            {% elif item.inspection_status == 'UNCERTAIN' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1">Uncertain</span>
+                            {% else %}
+                                <span class="badge badge-rejected px-2 py-1">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.validation_status == 'VALID' %}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress progress-industrial flex-grow-1" style="width: 70px;">
+                                    <div class="progress-bar {% if item.is_anomalous %}bg-danger{% else %}bg-success{% endif %}"
+                                         role="progressbar"
+                                         style="width: {{ item.anomaly_score|floatformat:2 }}%;"
+                                         aria-valuenow="{{ item.anomaly_score }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="1">
+                                    </div>
+                                </div>
+                                <span class="small fw-bold font-monospace">{{ item.formatted_score }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">
+                            {{ item.created_at|date:"Y-m-d H:i" }}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'inspection_result' item.inspection_id %}" class="btn btn-sm btn-light border me-1" title="View Inspection Details">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                            {% if item.validation_status == 'VALID' %}
+                            <a href="{% url 'download_pdf' item.inspection_id %}" class="btn btn-sm btn-outline-danger" title="Download Official PDF Report">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-light border text-muted" disabled title="PDF report disabled for invalid photographs">
+                                <i class="bi bi-file-earmark-x"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-folder-x fs-1 d-block mb-2 text-secondary"></i>
+                            <h6 class="fw-bold text-dark">No Inspection Records Found</h6>
+                            <p class="small text-muted mb-3">No matching inspection runs match your search filters.</p>
+                            <a href="{% url 'inspect_upload' %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i> Perform New Inspection
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'inspection/base.html' %}
+{% load static %}
+
+{% block title %}Inspect Industrial Component – VisionInspect AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-dark">PatchCore Industrial Inspection</h2>
+        <p class="text-muted mx-auto" style="max-width: 680px;">
+            Upload high-resolution photography of manufactured parts for deep surface anomaly detection.
+            VisionInspect AI verifies component validity via OpenCLIP and compares patch representations against a learned memory bank of normal manufacturing components.
+        </p>
+    </div>
+
+    <!-- Error Banner for Rejection or Uncertain Images -->
+    {% if error_message %}
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-9">
+            <div class="alert {% if status == 'UNCERTAIN' %}alert-warning border-warning{% else %}alert-danger border-danger{% endif %} shadow-sm d-flex align-items-start p-3 rounded-3" role="alert">
+                <i class="bi {% if status == 'UNCERTAIN' %}bi-question-circle-fill text-warning fs-3{% else %}bi-exclamation-octagon-fill text-danger fs-3{% endif %} me-3 flex-shrink-0 mt-1"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading fw-bold mb-1">
+                        {% if status == 'UNCERTAIN' %}Image Verification Uncertain{% else %}Image Validation Failed{% endif %}
+                    </h5>
+                    <p class="mb-1">{{ error_message }}</p>
+                    {% if rejected_reason %}
+                    <div class="mt-2 text-danger-emphasis small font-monospace {% if status == 'UNCERTAIN' %}bg-warning-subtle text-dark{% else %}bg-danger-subtle{% endif %} p-2 rounded">
+                        <strong>Diagnostic Reason:</strong> {{ rejected_reason }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upload Card -->
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card card-industrial p-4 p-md-5">
+
+                <form id="inspectForm" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- Dropzone -->
+                    <div id="uploadDropzone" class="upload-dropzone mb-3">
+                        <div class="dropzone-icon">
+                            <i class="bi bi-cloud-arrow-up-fill"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-2">Drag &amp; drop component photo here</h4>
+                        <p class="text-muted mb-3">
+                            or click to browse your computer
+                        </p>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary px-4 fw-semibold" onclick="document.getElementById('componentImageInput').click();">
+                                <i class="bi bi-folder2-open me-1"></i> Browse Files
+                            </button>
+                        </div>
+                        <div class="mt-3 text-secondary small">
+                            <i class="bi bi-info-circle me-1"></i> Supports <strong>JPG, JPEG, PNG, WEBP</strong> (Min 128x128, Max 20MB)
+                        </div>
+                    </div>
+
+                    <!-- Hidden Real File Input -->
+                    <div class="d-none">
+                        {{ form.image }}
+                    </div>
+
+                    <!-- Live Image Preview Container -->
+                    <div id="previewContainer" class="text-center mb-4" style="display: none;">
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <img id="previewImage" src="" alt="Selected Component Preview" class="img-fluid preview-main-image shadow-sm mb-2">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mt-2 px-2">
+                                <div class="text-start">
+                                    <span class="fw-bold text-dark d-block" id="fileName">component.png</span>
+                                    <small class="text-muted" id="fileSize">0.0 MB</small>
+                                </div>
+                                <div class="d-flex gap-2 mt-2 mt-sm-0">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('componentImageInput').click();">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Replace Image
+                                    </button>
+                                    <button type="button" id="removeImageBtn" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash3 me-1"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Submit Button -->
+                        <div class="d-grid gap-2 col-md-8 mx-auto mt-4">
+                            <button type="submit" id="inspectSubmitBtn" class="btn btn-primary btn-lg fw-bold py-3 shadow">
+                                <i class="bi bi-search me-2"></i> Run PatchCore Inspection
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+
+                <!-- Information Footnote -->
+                <div class="border-top pt-4 mt-3">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="bi bi-shield-lock text-primary me-1"></i> Vision-Language Pre-Screening &amp; PatchCore Architecture
+                    </h6>
+                    <p class="small text-muted mb-3">
+                        VisionInspect AI integrates an independent OpenCLIP validation layer that rejects non-industrial imagery (portraits, selfies, buildings, animals, food, vehicles, and graphics) before anomaly computation. Legitimate industrial components are analyzed via PatchCore's Wide ResNet-50-2 patch memory bank to highlight abnormal surface regions without inventing arbitrary defect categories.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-center small">
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>Pre-Screening: OpenCLIP ViT-B-32
+                        </span>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-cpu-fill text-primary me-1"></i>Model: PatchCore (Wide ResNet-50-2)
+                        </span>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-layers-fill text-info me-1"></i>Feature Layers: layer2 + layer3
+                        </span>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-activity text-danger me-1"></i>Pixel Anomaly Heatmap
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Loading Overlay during AI analysis -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner-industrial mb-3"></div>
+    <h4 class="fw-bold mb-1">Analyzing Industrial Component</h4>
+    <p class="text-light-50 small mb-0">Verifying industrial suitability &amp; computing PatchCore patch memory bank distances...</p>
+</div>
+{% endblock %}

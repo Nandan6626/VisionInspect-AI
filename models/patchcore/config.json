@@ -1,0 +1,14 @@
+{
+    "model_type": "PatchCore",
+    "framework": "Anomalib",
+    "backbone": "wide_resnet50_2",
+    "layers": [
+        "layer2",
+        "layer3"
+    ],
+    "coreset_sampling_ratio": 0.1,
+    "category": "grid",
+    "dataset_root": "datasets/mvtec_grid",
+    "anomaly_threshold": 0.5,
+    "weights_file": "patchcore_model.ckpt"
+}

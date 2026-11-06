@@ -1,0 +1,244 @@
+{% extends 'inspection/base.html' %}
+{% load static %}
+
+{% block title %}Inspection Result: {{ inspection.inspection_id }} – VisionInspect AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Breadcrumb & Top Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'inspection_history' %}" class="text-decoration-none">History</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ inspection.inspection_id }}</li>
+                </ol>
+            </nav>
+            <h3 class="fw-bold text-dark mb-0">PatchCore Anomaly Diagnostic Report</h3>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'inspect_upload' %}" class="btn btn-outline-secondary fw-semibold">
+                <i class="bi bi-arrow-repeat me-1"></i> Inspect Another
+            </a>
+            {% if inspection.validation_status == 'VALID' %}
+            <a href="{% url 'download_pdf' inspection.inspection_id %}" class="btn btn-danger fw-semibold shadow-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF Report
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="card card-industrial mb-4 border-0 shadow-sm overflow-hidden">
+        {% if inspection.is_anomalous %}
+        <div class="p-4" style="background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border-left: 6px solid #DC2626;">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 p-3 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                        <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="badge bg-danger text-uppercase px-2 py-1 mb-1">Anomaly Detected</span>
+                        <h4 class="fw-bold text-danger mb-0">
+                            Potential Surface Anomaly Flagged
+                        </h4>
+                        <p class="text-danger-emphasis mb-0 small">
+                            PatchCore memory bank detected anomalous surface deviations with an anomaly score of <strong>{{ inspection.formatted_score }}</strong> (Threshold: {{ inspection.anomaly_threshold }}). Physical quality review is recommended.
+                        </p>
+                    </div>
+                </div>
+                <div class="text-md-end">
+                    <div class="small text-muted">Inspection Outcome</div>
+                    <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 fw-bold fs-6">
+                        ACTION REQUIRED
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% elif inspection.is_normal %}
+        <div class="p-4" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-left: 6px solid #16A34A;">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 p-3 bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                        <i class="bi bi-check-circle-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="badge bg-success text-uppercase px-2 py-1 mb-1">Standard Spec Pass</span>
+                        <h4 class="fw-bold text-success mb-0">
+                            Normal Component – Conforms to Learned Distribution
+                        </h4>
+                        <p class="text-success-emphasis mb-0 small">
+                            Surface patch embeddings match the normal manufacturing memory bank with an anomaly score of <strong>{{ inspection.formatted_score }}</strong> (Below threshold {{ inspection.anomaly_threshold }}).
+                        </p>
+                    </div>
+                </div>
+                <div class="text-md-end">
+                    <div class="small text-muted">Inspection Outcome</div>
+                    <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fw-bold fs-6">
+                        PASSED SPECIFICATION
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-4" style="background: #F8FAFC; border-left: 6px solid #64748B;">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-x-circle text-secondary fs-2 me-3"></i>
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">Inspection Rejected / Uncertain</h5>
+                    <p class="text-muted mb-0 small">{{ inspection.validation_message }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Diagnostic Visualizations: Side-by-Side Comparison -->
+    <div class="card card-industrial p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-layers-half text-primary me-2"></i>Multi-Modal Diagnostic Visualizer (Original | Heatmap | Defect Overlay)
+            </h5>
+            <span class="badge bg-light text-dark border font-monospace small">
+                {{ inspection.original_filename|default:"component.png" }}
+            </span>
+        </div>
+
+        {% if inspection.comparison_image %}
+        <div class="text-center bg-dark rounded-3 p-2 mb-2 overflow-auto">
+            <img src="{{ inspection.comparison_image.url }}" alt="Comparison Heatmap" class="img-fluid rounded" style="max-height: 480px; object-fit: contain;">
+        </div>
+        <div class="d-flex justify-content-between text-muted small px-2">
+            <span><strong>Left:</strong> Original Photograph</span>
+            <span><strong>Center:</strong> PatchCore Distance Heatmap (Blue=Normal, Red=Anomaly)</span>
+            <span><strong>Right:</strong> Blended Defect Localization Overlay</span>
+        </div>
+        {% else %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="text-center bg-dark rounded-3 p-2">
+                    <img src="{{ inspection.uploaded_image.url }}" alt="Original Photo" class="img-fluid rounded" style="max-height: 380px;">
+                </div>
+                <span class="small text-muted text-center d-block mt-2">Original Photograph</span>
+            </div>
+            <div class="col-md-6">
+                {% if inspection.anomaly_heatmap %}
+                <div class="text-center bg-dark rounded-3 p-2">
+                    <img src="{{ inspection.anomaly_heatmap.url }}" alt="Heatmap" class="img-fluid rounded" style="max-height: 380px;">
+                </div>
+                <span class="small text-muted text-center d-block mt-2">PatchCore Anomaly Heatmap</span>
+                {% else %}
+                <div class="p-5 text-center text-muted border rounded-3">
+                    <i class="bi bi-image fs-1 d-block mb-2"></i>
+                    No heatmap generated for rejected or non-industrial image.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Details Grid -->
+    <div class="row g-4">
+        <!-- Telemetry Parameters -->
+        <div class="col-lg-6">
+            <div class="card card-industrial p-4 h-100">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-sliders text-primary me-2"></i>Diagnostic Parameters
+                </h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small text-uppercase fw-semibold">Anomaly Score</span>
+                            <h3 class="fw-bold {% if inspection.is_anomalous %}text-danger{% else %}text-success{% endif %} mt-1 mb-0">
+                                {{ inspection.formatted_score }}
+                            </h3>
+                            <div class="progress progress-industrial mt-2">
+                                <div class="progress-bar {% if inspection.is_anomalous %}bg-danger{% else %}bg-success{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ inspection.anomaly_score|floatformat:2 }}%;"
+                                     aria-valuenow="{{ inspection.anomaly_score }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="1">
+                                </div>
+                            </div>
+                            <small class="text-muted mt-1 d-block">Threshold: {{ inspection.anomaly_threshold }}</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small text-uppercase fw-semibold">Industrial Validation</span>
+                            <h3 class="fw-bold text-primary mt-1 mb-0">
+                                {{ inspection.validation_status }}
+                            </h3>
+                            <small class="text-muted mt-1 d-block">Confidence: {{ inspection.validation_confidence|floatformat:1 }}% (OpenCLIP)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive small">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted">Inspection ID:</td>
+                                <td class="fw-bold font-monospace text-dark">{{ inspection.inspection_id }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Analysis Model:</td>
+                                <td class="fw-semibold text-dark">PatchCore (Wide ResNet-50-2 Backbone)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Layers Sampled:</td>
+                                <td class="text-dark">layer2, layer3 (Patch Neighborhoods)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Execution Latency:</td>
+                                <td class="text-dark font-monospace">{{ inspection.inference_time_ms|floatformat:1 }} ms</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Audited At:</td>
+                                <td class="text-dark">{{ inspection.created_at|date:"Y-m-d H:i:s T" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Disclaimer Card -->
+        <div class="col-lg-6">
+            <div class="card card-industrial p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-shield-exclamation text-warning me-2"></i>Quality Engineering Advisory
+                    </h5>
+                    <div class="alert alert-secondary border-secondary-subtle small mb-3 rounded-3" role="alert">
+                        <strong>Unsupervised Anomaly Localization:</strong>
+                        PatchCore operates on learned representations of normal industrial components. It identifies statistically anomalous surface regions and produces localized heatmaps without inventing arbitrary defect categories (such as crack, rust, or scratch).
+                    </div>
+                    <p class="small text-muted mb-0">
+                        In compliance with industrial manufacturing standards, any component identified with <strong>Potential Surface Anomaly</strong> should undergo secondary physical verification by certified quality engineering personnel prior to assembly or shipment.
+                    </p>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    {% if inspection.validation_status == 'VALID' %}
+                    <a href="{% url 'download_pdf' inspection.inspection_id %}" class="btn btn-danger fw-semibold">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Download Official PDF Report
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'inspection_history' %}" class="btn btn-outline-secondary fw-semibold">
+                        <i class="bi bi-clock-history me-1"></i> View Audit History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

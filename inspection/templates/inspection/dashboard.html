@@ -1,0 +1,339 @@
+{% extends 'inspection/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard – VisionInspect AI PatchCore QA{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">PatchCore Quality Inspection Dashboard</h2>
+            <p class="text-muted mb-0">Industrial surface anomaly detection, memory bank telemetry, and defect localization.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'inspect_upload' %}" class="btn btn-primary px-3 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-camera-fill me-1"></i> Inspect Component
+            </a>
+            <a href="{% url 'inspection_history' %}" class="btn btn-outline-secondary px-3 py-2 fw-semibold">
+                <i class="bi bi-clock-history me-1"></i> Full History
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Valid Inspections -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card card-industrial p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Total Inspected</span>
+                        <h3 class="fw-bold text-dark mt-1 mb-0">{{ total_inspections }}</h3>
+                        <small class="text-muted">Certified manufactured items</small>
+                    </div>
+                    <div class="card-stat-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-cpu-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Normal Components -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card card-industrial p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Normal Components</span>
+                        <h3 class="fw-bold text-success mt-1 mb-0">{{ total_normal }}</h3>
+                        <small class="text-success fw-semibold">Passed nominal specification</small>
+                    </div>
+                    <div class="card-stat-icon bg-success-subtle text-success">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Potential Anomalies -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card card-industrial p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Potential Anomalies</span>
+                        <h3 class="fw-bold text-danger mt-1 mb-0">{{ total_anomalous }}</h3>
+                        <small class="text-danger fw-semibold">Flagged for QA review</small>
+                    </div>
+                    <div class="card-stat-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Anomaly Rate -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card card-industrial p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Anomaly Rate</span>
+                        <h3 class="fw-bold {% if anomaly_percentage > 10 %}text-warning{% else %}text-dark{% endif %} mt-1 mb-0">
+                            {{ anomaly_percentage }}%
+                        </h3>
+                        <small class="text-muted">Avg score: {{ avg_score }}</small>
+                    </div>
+                    <div class="card-stat-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-pie-chart-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not has_inspections %}
+    <!-- Empty State -->
+    <div class="card card-industrial text-center py-5 px-3 mb-4">
+        <div class="py-4">
+            <div class="mb-3">
+                <i class="bi bi-camera text-primary" style="font-size: 3.5rem;"></i>
+            </div>
+            <h4 class="fw-bold text-dark">No Industrial Component Inspections Yet</h4>
+            <p class="text-muted mx-auto" style="max-width: 500px;">
+                Upload your first manufactured component photograph to evaluate anomaly scores and generate pixel-level heatmaps using PatchCore.
+            </p>
+            <a href="{% url 'inspect_upload' %}" class="btn btn-primary btn-lg px-4 mt-2 shadow-sm">
+                <i class="bi bi-cloud-arrow-up me-2"></i> Inspect Your First Component
+            </a>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Quality Ratio Donut Chart -->
+        <div class="col-lg-5">
+            <div class="card card-industrial h-100 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-pie-chart text-primary me-2"></i>Component Quality Ratio
+                    </h5>
+                    <span class="badge bg-light text-secondary border">Normal vs Anomalous</span>
+                </div>
+                <div class="position-relative" style="height: 280px;">
+                    <canvas id="qualityRatioChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inspection Trend Chart -->
+        <div class="col-lg-7">
+            <div class="card card-industrial h-100 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-graph-up text-primary me-2"></i>Inspection Volume Trends (Last 7 Days)
+                    </h5>
+                    <span class="badge bg-light text-secondary border">Daily Activity</span>
+                </div>
+                <div class="position-relative" style="height: 280px;">
+                    <canvas id="inspectionTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Inspections Table -->
+    <div class="card card-industrial mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-clock-history text-primary me-2"></i>Recent PatchCore Inspections
+            </h5>
+            <a href="{% url 'inspection_history' %}" class="btn btn-sm btn-outline-primary fw-semibold">
+                View All Inspections <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small text-uppercase">
+                    <tr>
+                        <th class="ps-3">Component</th>
+                        <th>Anomaly Map</th>
+                        <th>Inspection ID</th>
+                        <th>Status</th>
+                        <th>Anomaly Score</th>
+                        <th>Date & Time</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_inspections %}
+                    <tr>
+                        <td class="ps-3">
+                            {% if item.uploaded_image %}
+                            <img src="{{ item.uploaded_image.url }}" alt="Component" class="table-thumbnail">
+                            {% else %}
+                            <div class="table-thumbnail bg-secondary-subtle d-flex align-items-center justify-content-center">
+                                <i class="bi bi-image text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.anomaly_heatmap %}
+                            <img src="{{ item.anomaly_heatmap.url }}" alt="Heatmap" class="table-thumbnail border-danger">
+                            {% else %}
+                            <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'inspection_result' item.inspection_id %}" class="fw-bold text-decoration-none text-primary font-monospace">
+                                {{ item.inspection_id }}
+                            </a>
+                            <div class="small text-muted">{{ item.original_filename|truncatechars:24 }}</div>
+                        </td>
+                        <td>
+                            {% if item.inspection_status == 'NORMAL' %}
+                                <span class="badge badge-normal px-2 py-1">
+                                    <i class="bi bi-check-circle me-1"></i>Normal
+                                </span>
+                            {% elif item.inspection_status == 'ANOMALOUS' %}
+                                <span class="badge badge-defect px-2 py-1">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Anomaly Flagged
+                                </span>
+                            {% elif item.inspection_status == 'UNCERTAIN' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1">
+                                    <i class="bi bi-question-circle me-1"></i>Uncertain
+                                </span>
+                            {% else %}
+                                <span class="badge badge-rejected px-2 py-1">
+                                    <i class="bi bi-x-circle me-1"></i>Rejected
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.validation_status == 'VALID' %}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress progress-industrial flex-grow-1" style="width: 70px;">
+                                    <div class="progress-bar {% if item.is_anomalous %}bg-danger{% else %}bg-success{% endif %}"
+                                         role="progressbar"
+                                         style="width: {{ item.anomaly_score|floatformat:2 }}%;"
+                                         aria-valuenow="{{ item.anomaly_score }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="1">
+                                    </div>
+                                </div>
+                                <span class="small fw-bold font-monospace">{{ item.formatted_score }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">
+                            {{ item.created_at|date:"M d, Y H:i" }}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'inspection_result' item.inspection_id %}" class="btn btn-sm btn-light border me-1" title="View Inspection Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if item.validation_status == 'VALID' %}
+                            <a href="{% url 'download_pdf' item.inspection_id %}" class="btn btn-sm btn-outline-danger" title="Download Official PDF Report">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if has_inspections %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Ratio Donut Chart
+    const ratioLabels = {{ ratio_labels_json|safe }};
+    const ratioData = {{ ratio_data_json|safe }};
+    const ratioCtx = document.getElementById('qualityRatioChart');
+
+    if (ratioCtx) {
+        new Chart(ratioCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ratioLabels,
+                datasets: [{
+                    data: ratioData,
+                    backgroundColor: ['#10B981', '#EF4444', '#94A3B8'],
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, padding: 16 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Inspection Trends Chart
+    const trendDates = {{ trend_dates_json|safe }};
+    const trendNormal = {{ trend_normal_json|safe }};
+    const trendAnomalous = {{ trend_anomalous_json|safe }};
+    const trendCtx = document.getElementById('inspectionTrendChart');
+
+    if (trendCtx && trendDates.length > 0) {
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: trendDates,
+                datasets: [
+                    {
+                        label: 'Normal Components',
+                        data: trendNormal,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Potential Anomalies',
+                        data: trendAnomalous,
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12 }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

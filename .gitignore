@@ -1,0 +1,49 @@
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model & Framework Caches
+**/.cache/
+.cache/
+datasets/**/.cache/
+models/**/.cache/
+
+# Ultralytics & YOLO runs
+runs/
+
+# SQLite Database
+*.sqlite3
+*.db
+
+# Media uploads & generated heatmaps (keep directory structure)
+media/inspections/*
+media/heatmaps/*
+!media/inspections/.gitkeep
+!media/heatmaps/.gitkeep
+
+# Temporary test models
+models/test_patchcore/
+
+# IDE & OS Metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Environment variables & secrets
+.env
+*.env
