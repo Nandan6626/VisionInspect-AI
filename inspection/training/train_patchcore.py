@@ -126,10 +126,6 @@ if __name__ == "__main__":
     parser.add_argument("--coreset_ratio", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=4)
 
-
-
-
-    
     args = parser.parse_args()
     train_patchcore(
         dataset_root=args.dataset_root,
